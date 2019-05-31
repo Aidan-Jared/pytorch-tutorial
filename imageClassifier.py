@@ -52,9 +52,9 @@ if __name__ == "__main__":
     net = Net()
     net.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=.001, momentum=.9)
+    optimizer = optim.Adam(net.parameters(), lr=.001)
 
-    for epoch in range(5):
+    for epoch in range(10):
         running_loss = 0
         for i, data in enumerate(trainloader,0):
             inputs, labels = data
