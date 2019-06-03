@@ -86,6 +86,7 @@ if __name__ == "__main__":
     correct = 0
     total = 0
     with torch.no_grad():
+        
         for data in testloader:
             images, labels = data
             outputs = net(images)
