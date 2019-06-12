@@ -124,6 +124,32 @@ class LuongAttnDecoderRNN(nn.Module):
         output = F.softmax(self.out(concat_output), dim=1)
         return output, hidden
 
+class GreedySearchDecoder(torch.jit.ScriptModule):
+    def __init__(self, encoder, decoder, decoder_n_layers):
+        super(GreedySearchDecoder, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self._device = device
+        self._SOS_token = SOS_token
+        self._decoder_n_layers = decoder_n_layers
+    
+    __constants__ = ['_device', '_SOS_token', '_decoder_n_layers']
+
+    @torch.jit.script_method
+    def forward(self, input_seq : torch.Tensor, input_length : torch.Tensor, max_length : int):
+        encoder_outputs, encoder_hidden = self.encoder(input_seq, input_length)
+        decoder_hidden = encoder_hidden[:self._decoder_n_layers]
+        decoder_input = torch.ones(1,1, device=self._device, dtype=torch.long) * self._SOS_token
+        all_tokens = torch.zeros([0], device = self._device, dtype=torch.long)
+        all_scores = torch.zeros([0], device = self._device)
+        for _ in range(max_length):
+            decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+            decoder_scores, decoder_input = torch.max(decoder_output, dim = 1)
+            all_tokens = torch.cat((all_tokens, decoder_input), dim=0)
+            all_scores = torch.cat((all_scores, decoder_scores), dim=0)
+            decoder_input = torch.unsqueeze(decoder_input, 0)
+        return all_tokens, all_scores
+
 def normalizeString(s):
     s = s.lower()
     s = re.sub(r"([.!?])", r" \1", s)
@@ -133,9 +159,97 @@ def normalizeString(s):
 def indexesFromSentence(voc, sentence):
     return [voc.word2index[word] for word in sentence.split(' ')] + [EOS_token]
 
+def evaluate(encoder, decoder, searcher, voc, sentence, max_length = 10):
+    indexes_batch = [indexesFromSentence(voc, sentence)]
+    lenghts = torch.tensor([len(indexes) for indexex in indexes_batch])
+    input_batch = torch.LongTensor(indexes_batch).transpose(0,1)
+    input_batch = input_batch.to(device)
+    lenghts = lenghts.to(device)
+    tokens, scores = searcher(input_batch, lenghts, max_length)
+    decoded_words = [voc.index2word[token.item()] for token in tokens]
+    return decoded_words
+
+def evaluateInput(encoder, decoder, searcher, voc):
+    input_sentence = ''
+    while(1):
+        try:
+            input_sentence = input('> ')
+            if input_sentence =='q' or input_sentence == 'quit': break
+            input_sentence = normalizeString(input_sentence)
+            output_words = evaluate(encoder, decoder, searcher, voc, input_sentence)
+            output_words[:] = [x for x in output_words if not (x == 'EOS' or x == 'PAD')]
+            print('Bot: ', ' '.join(output_words))
+        except KeyError:
+            print('Error: Encoderted Unknown word.')
+
+def evaluateExample(sentence, encoder, decoder, searcher, voc):
+    print('> ' + sentence)
+    input_sentence = normalizeString(sentence)
+    output_words = evaluate(encoder, decoder, searcher, voc, input_sentence)
+    output_words[:] = [x for x in output_words if not (x == 'EOS' or x == 'PAD')]
+    print('Bot:', ' '.join(output_words))
+
 if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     MAX_LENGTH = 10
     PAD_token = 0
     SOS_token = 1
     EOS_token = 2
+
+    save_dir = os.path.join("data", "save")
+    model_name = "cb_model"
+    attn_model = 'dot'
+    corpus_name = 'cornell movie-dialogs corpus'
+    hidden_size = 500
+    encoder_n_layers = 2
+    decoder_n_layers = 2
+    dropout = .1
+    batch_size = 64
+
+
+    loadFilename = 'data/4000_checkpoint.tar'
+    checkpoint = torch.load(loadFilename, map_location=torch.device('cpu'))
+    encoder_sd = checkpoint['en']
+    decoder_sd = checkpoint['de']
+    encoder_optimizer_sd = checkpoint['en_opt']
+    decoder_optimizer_sd = checkpoint['de_opt']
+    embedding_sd = checkpoint['embedding']
+    voc = Voc(corpus_name)
+    voc.__dict__ = checkpoint['voc_dict']
+
+    print('Building encoder and decoder ...')
+    # Initialize word embeddings
+    embedding = nn.Embedding(voc.num_words, hidden_size)
+    embedding.load_state_dict(embedding_sd)
+    # Initialize encoder & decoder models
+    encoder = EncoderRNN(hidden_size, embedding, encoder_n_layers, dropout)
+    decoder = LuongAttnDecoderRNN(attn_model, embedding, hidden_size, voc.num_words, decoder_n_layers, dropout)
+    # Load trained model params
+    encoder.load_state_dict(encoder_sd)
+    decoder.load_state_dict(decoder_sd)
+    # Use appropriate device
+    encoder = encoder.to(device)
+    decoder = decoder.to(device)
+    # Set dropout layers to eval mode
+    encoder.eval()
+    decoder.eval()
+    print('Models built and ready to go!')
+
+    test_seq = torch.LongTensor(MAX_LENGTH, 1).random_(0, voc.num_words)
+    test_seq_lenght = torch.LongTensor([test_seq.size()[0]])
+    traced_encoder = torch.jit.trace(encoder, (test_seq, test_seq_lenght))
+    
+    test_encoder_outputs, test_encoder_hidden = traced_encoder(test_seq, test_seq_lenght)
+    test_decoder_hidden = test_encoder_hidden[:decoder.n_layers]
+    test_decoder_input = torch.LongTensor(1,1).random_(0, voc.num_words)
+    traced_decoder = torch.jit.trace(decoder, (test_decoder_input, test_decoder_hidden, test_encoder_outputs))
+
+    scripted_searcher = GreedySearchDecoder(traced_encoder, traced_decoder, decoder.n_layers)
+    
+    print('scripted_searcher graph:\n', scripted_searcher.graph)
+
+    sentences = ["hello", "what's up?", "who are you?", "where am I?", "where are you from?"]
+    for s in sentences:
+        evaluateExample(s, traced_encoder, traced_decoder, scripted_searcher, voc)
+    
+    scripted_searcher.save('scripted_chatbot.pth')
