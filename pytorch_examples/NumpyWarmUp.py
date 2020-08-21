@@ -30,7 +30,7 @@ if __name__ == "__main__":
         grad_w2 = h_relu.T.dot(grad_y_pred)
         grad_h_relu = grad_y_pred.dot(w2.T)
         grad_h = grad_h_relu.copy()
-        # grad_h[h < 0] = 0
+        grad_h[h < 0] = 0
         grad_w1 = x.T.dot(grad_h)
 
         w1 -= learning_rate * grad_w1
