@@ -90,7 +90,7 @@ if __name__ == "__main__":
     n_hidden = 128
     model = RNN(n_letters, n_hidden, n_categories)
 
-    # input = letterToTensor('Albert')
+    # input = lineToTensor('Albert')
     # hidden = model.initHidden()
 
     # output, next_hidden = model(input, hidden)
