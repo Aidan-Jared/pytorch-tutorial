@@ -5,6 +5,10 @@ import os
 import unicodedata
 import string
 import random
+import time
+import math
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 import torch
 import torch.nn as nn
@@ -64,6 +68,13 @@ def train(category_tensor, line_tensor, model):
         p.data.add_(p.grad.data, alpha=-learning_rate)
     return output, loss.item()
 
+def timeSince(since):
+    now = time.time()
+    s = now - since
+    m = math.floor(s / 60)
+    s -= m * 60
+    return '%dm %ds' % (m, s)
+
 if __name__ == "__main__":
     # reading in the data
 
@@ -97,9 +108,34 @@ if __name__ == "__main__":
     # print(output)
     # print(categoryFromOutput(output))
 
-    for i in range(10):
-        category, line, category_tensor, line_tensor = randomTrainingExample()
-        print('category =', category, '/ line =', line)
+    # for i in range(10):
+    #     category, line, category_tensor, line_tensor = randomTrainingExample()
+    #     print('category =', category, '/ line =', line)
 
     criterion = nn.NLLLoss()
     learning_rate = .005
+    n_iters = 100000
+    print_every = 5000
+    plot_every = 1000
+
+    current_loss = 0
+    all_losses = []
+
+    start = time.time()
+
+    for iter in range(1, n_iters + 1):
+        category, line, category_tensor, line_tensor = randomTrainingExample()
+        output, loss = train(category_tensor, line_tensor, model)
+        current_loss += loss
+
+        if iter % print_every == 0:
+            guess, guess_i = categoryFromOutput(output)
+            correct = '✓' if guess == category else '✗ (%s)' % category
+            print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
+        if iter % plot_every == 0:
+            all_losses.append(current_loss / plot_every)
+            current_loss = 0
+    
+    plt.figure()
+    plt.plot(all_losses)
+    plt.show()
