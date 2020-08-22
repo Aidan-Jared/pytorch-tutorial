@@ -75,6 +75,27 @@ def timeSince(since):
     s -= m * 60
     return '%dm %ds' % (m, s)
 
+def evaluate(line_tensor, model):
+    hidden = model.initHidden()
+    for i in range(line_tensor.size()[0]):
+        output, hidden = model(line_tensor[i], hidden)
+    return output
+
+def predict(input_line, model, n_predictions=3):
+    print('\n> %s' % input_line)
+    with torch.no_grad():
+        output = evaluate(lineToTensor(input_line), model)
+
+        # Get top N categories
+        topv, topi = output.topk(n_predictions, 1, True)
+        predictions = []
+
+        for i in range(n_predictions):
+            value = topv[0][i].item()
+            category_index = topi[0][i].item()
+            print('(%.2f) %s' % (value, all_categories[category_index]))
+            predictions.append([value, all_categories[category_index]])
+
 if __name__ == "__main__":
     # reading in the data
 
@@ -139,3 +160,33 @@ if __name__ == "__main__":
     plt.figure()
     plt.plot(all_losses)
     plt.show()
+
+    confusion = torch.zeros(n_categories,n_categories)
+    n_confusion = 1000
+
+    for i in range(n_confusion):
+        category, line, category_tensor, line_tensor = randomTrainingExample()
+        output = evaluate(line_tensor, model)
+        guess, guess_i = categoryFromOutput(output)
+        category_i = all_categories.index(category)
+        confusion[category_i, category_i] += 1
+
+    for i in range(n_categories):
+        confusion[i] = confusion[i] / confusion[i].sum()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    cax = ax.matshow(confusion.numpy())
+    fig.colorbar(cax)
+
+    ax.set_xticklabels([''] + all_categories, rotation=90)
+    ax.set_yticklabels([''] + all_categories)
+
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+
+    plt.show()
+    
+    predict('Dovesky', model)
+    predict('Jackson', model)
+    predict('Satoshi', model)    
