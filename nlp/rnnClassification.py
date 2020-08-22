@@ -133,6 +133,8 @@ if __name__ == "__main__":
     #     category, line, category_tensor, line_tensor = randomTrainingExample()
     #     print('category =', category, '/ line =', line)
 
+
+    # training (move to new class, i like this code)
     criterion = nn.NLLLoss()
     learning_rate = .005
     n_iters = 100000
@@ -157,6 +159,8 @@ if __name__ == "__main__":
             all_losses.append(current_loss / plot_every)
             current_loss = 0
     
+    
+    # model eval
     plt.figure()
     plt.plot(all_losses)
     plt.show()
