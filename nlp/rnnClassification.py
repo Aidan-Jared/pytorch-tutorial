@@ -12,7 +12,7 @@ import matplotlib.ticker as ticker
 
 import torch
 import torch.nn as nn
-from rnnClassModel import RNN
+from rnnClassModelGRU import RNN
 
 def findFiles(path): return glob.glob(path)
 
@@ -173,7 +173,7 @@ if __name__ == "__main__":
         output = evaluate(line_tensor, model)
         guess, guess_i = categoryFromOutput(output)
         category_i = all_categories.index(category)
-        confusion[category_i, category_i] += 1
+        confusion[category_i][guess_i] += 1
 
     for i in range(n_categories):
         confusion[i] = confusion[i] / confusion[i].sum()
