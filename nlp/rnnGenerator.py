@@ -2,6 +2,8 @@ from __future__ import unicode_literals, print_function, division
 from io import open
 import glob
 import os
+import time
+import math
 import unicodedata
 import string
 import random
@@ -74,6 +76,13 @@ def train(category_tensor, input_line_tensor, target_line_tensor, model):
     
     return output, loss.item() / input_line_tensor.size(0)
 
+def timeSince(since):
+    now = time.time()
+    s = now - since
+    m = math.floor(s / 60)
+    s -= m * 60
+    return '%dm %ds' % (m, s)
+
 if __name__ == "__main__":
     all_letters = string.ascii_letters + " .,;'-"
     n_letters = len(all_letters) + 1 # for eos
@@ -95,7 +104,26 @@ if __name__ == "__main__":
     # inputs = category (hot encoded), current letter(hot encoded), hidden state
     # output = next letter, next hidden state
 
-    n_hidden = 128
-    model = RNN(n_categories, n_letters, n_hidden, n_letters)
     criterion = nn.NLLLoss()
     learning_rate = .0005
+
+    n_hidden = 128
+    model = RNN(n_categories, n_letters, n_hidden, n_letters)
+    n_iters = 100000
+    print_every = 5000
+    plot_every = 500
+    all_losses = []
+    total_loss = 0
+
+    start = time.time()
+
+    for iter in range(1, n_iters + 1):
+        output, loss = train(*randomTrainingExample(), model)
+        total_loss += loss
+
+        if iter % print_every == 0:
+            print('%s (%d %d%%) %.4f' % (timeSince(start), iter, iter / n_iters * 100, loss))
+
+        if iter % plot_every == 0:
+            all_losses.append(total_loss / plot_every)
+            total_loss = 0
