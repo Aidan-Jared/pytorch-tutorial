@@ -13,7 +13,7 @@ class RNN(nn.Module):
     def forward(self, input, hidden):
         combined = torch.cat((input, hidden), 1)
         hidden = self.input_2_hidden(combined)
-        output = self.input_2_output(combined)
+        output, hidden = self.input_2_output(combined)
         output = self.softmax(output)
         return output, hidden
 

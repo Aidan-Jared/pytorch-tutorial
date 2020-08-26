@@ -3,3 +3,4 @@
 60_Min_Blitz/*.pth
 /__pycache__
 nlp/__pycache__
+nlp/test.py

@@ -12,7 +12,7 @@ import matplotlib.ticker as ticker
 
 import torch
 import torch.nn as nn
-from rnnClassModel import RNN
+from rnnClassModelGRU import RNN
 
 def findFiles(path): return glob.glob(path)
 
@@ -133,6 +133,8 @@ if __name__ == "__main__":
     #     category, line, category_tensor, line_tensor = randomTrainingExample()
     #     print('category =', category, '/ line =', line)
 
+
+    # training (move to new class, i like this code)
     criterion = nn.NLLLoss()
     learning_rate = .005
     n_iters = 100000
@@ -157,6 +159,8 @@ if __name__ == "__main__":
             all_losses.append(current_loss / plot_every)
             current_loss = 0
     
+    
+    # model eval
     plt.figure()
     plt.plot(all_losses)
     plt.show()
@@ -169,7 +173,7 @@ if __name__ == "__main__":
         output = evaluate(line_tensor, model)
         guess, guess_i = categoryFromOutput(output)
         category_i = all_categories.index(category)
-        confusion[category_i, category_i] += 1
+        confusion[category_i][guess_i] += 1
 
     for i in range(n_categories):
         confusion[i] = confusion[i] / confusion[i].sum()
