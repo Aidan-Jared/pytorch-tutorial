@@ -10,6 +10,8 @@ import random
 import torch
 import torch.nn as nn
 from rnnGenModel import RNN
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 def findFiles(path): return glob.glob(path)
 
@@ -83,6 +85,30 @@ def timeSince(since):
     s -= m * 60
     return '%dm %ds' % (m, s)
 
+def sample(category, model, start_letter="A"):
+    with torch.no_grad():
+        category_tensor = categoryTensor(category)
+        input = inputTensor(start_letter)
+        hidden = model.initHidden()
+
+        output_name = start_letter
+
+        for i in range(max_lenght):
+            output, hidden = model(category_tensor, input[0], hidden)
+            topv, topi = output.topk(1)
+            topi = topi[0][0]
+            if topi == n_letters - 1:
+                break # eos
+            else:
+                letter = all_letters[topi]
+                output_name += letter
+            input = inputTensor(letter)
+    return output_name
+
+def samples(category, model, start_letters = 'ABC'):
+    for start_letter in start_letters:
+        print(sample(category, model, start_letter))
+
 if __name__ == "__main__":
     all_letters = string.ascii_letters + " .,;'-"
     n_letters = len(all_letters) + 1 # for eos
@@ -127,3 +153,16 @@ if __name__ == "__main__":
         if iter % plot_every == 0:
             all_losses.append(total_loss / plot_every)
             total_loss = 0
+
+    plt.figure()
+    plt.plot(all_losses)
+
+    max_lenght = 20
+    
+    samples('Russian', model, 'RUS')
+
+    samples('German', model, 'GER')
+
+    samples('Spanish', model, 'SPA')
+
+    samples('Chinese', model, 'CHI')
