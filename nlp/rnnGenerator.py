@@ -159,10 +159,12 @@ if __name__ == "__main__":
 
     max_lenght = 20
     
-    samples('Russian', model, 'RUS')
+    # samples('Russian', model, 'RUS')
 
-    samples('German', model, 'GER')
+    # samples('German', model, 'GER')
 
-    samples('Spanish', model, 'SPA')
+    # samples('Spanish', model, 'SPA')
 
-    samples('Chinese', model, 'CHI')
+    # samples('Chinese', model, 'CHI')
+
+    samples('Irish', model, 'AAA')
