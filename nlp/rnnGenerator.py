@@ -9,7 +9,7 @@ import string
 import random
 import torch
 import torch.nn as nn
-from rnnGenModel import RNN
+from rnnGenModelGRU import RNN
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
