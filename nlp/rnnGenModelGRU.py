@@ -8,7 +8,8 @@ class RNN(nn.Module):
         self.input_size = input_size
         self.category_size = n_categories
 
-        self.input_2_output = nn.GRU(n_categories + input_size, hidden_size)
+        self.input_2_hidden = nn.GRU(n_categories + input_size, hidden_size)
+        self.hidden_2_output = nn.GRU(hidden_size, hidden_size)
         self.output_2_output = nn.Linear(n_categories + hidden_size, output_size)
         self.hidden_2_hidden = nn.Linear(hidden_size, hidden_size)
         self.dropout = nn.Dropout(.1) # prevent over fitting / increase sampling variety
@@ -19,7 +20,8 @@ class RNN(nn.Module):
         category = category.view(1,1,self.category_size)
         input_combined = torch.cat((category, input), 2)
         
-        output, hidden = self.input_2_output(input_combined, hidden)
+        output, hidden = self.input_2_hidden(input_combined, hidden)
+        output, hidden = self.hidden_2_output(output, hidden)
        
         output_combined = torch.cat((category, output), 2)
         
