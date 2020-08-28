@@ -9,7 +9,7 @@ import string
 import random
 import torch
 import torch.nn as nn
-from rnnGenModelGRU import RNN
+from rnnGenModelLSTM import RNN
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
@@ -62,13 +62,14 @@ def randomTrainingExample():
 def train(category_tensor, input_line_tensor, target_line_tensor, model):
     target_line_tensor.unsqueeze_(-1)
     hidden = model.initHidden()
+    cell_state = hidden
 
     model.zero_grad()
 
     loss = 0
 
     for i in range(input_line_tensor.size(0)):
-        output, hidden = model(category_tensor, input_line_tensor[i], hidden)
+        output, hidden, cell_state = model(category_tensor, input_line_tensor[i], hidden, cell_state)
         l = criterion(output, target_line_tensor[i])
         loss += l
     
@@ -90,11 +91,12 @@ def sample(category, model, start_letter="A"):
         category_tensor = categoryTensor(category)
         input = inputTensor(start_letter)
         hidden = model.initHidden()
+        cell_state = hidden
 
         output_name = start_letter
 
         for i in range(max_lenght):
-            output, hidden = model(category_tensor, input[0], hidden)
+            output, hidden, cell_state = model(category_tensor, input[0], hidden, cell_state)
             topv, topi = output.topk(1)
             topi = topi[0][0]
             if topi == n_letters - 1:
@@ -159,12 +161,12 @@ if __name__ == "__main__":
 
     max_lenght = 20
     
-    # samples('Russian', model, 'RUS')
+    samples('Russian', model, 'RUS')
 
-    # samples('German', model, 'GER')
+    samples('German', model, 'GER')
 
-    # samples('Spanish', model, 'SPA')
+    samples('Spanish', model, 'SPA')
 
-    # samples('Chinese', model, 'CHI')
+    samples('Chinese', model, 'CHI')
 
     samples('Irish', model, 'AAA')
