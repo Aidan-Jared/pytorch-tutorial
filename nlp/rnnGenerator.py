@@ -136,7 +136,7 @@ if __name__ == "__main__":
     learning_rate = .0005
 
     n_hidden = 128
-    model = RNN(n_categories, n_letters, n_hidden, n_letters)
+    model = RNN(n_categories, n_letters, n_hidden, n_letters, 1)
     n_iters = 100000
     print_every = 5000
     plot_every = 500
