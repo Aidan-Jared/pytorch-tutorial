@@ -100,10 +100,10 @@ def tensorFromSentence(lang, sentence):
 
 def tensorsFromPair(pair):
     input_tensor = tensorFromSentence(input_lang, pair[0])
-    target_tensor = tensorFromSentence(output_lang, pair[0])
+    target_tensor = tensorFromSentence(output_lang, pair[1])
     return (input_tensor, target_tensor)
 
-def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length = 20):
+def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length = 10):
     encoder_hidden = encoder.initHidden(device)
     
     encoder_optimizer.zero_grad()
@@ -118,7 +118,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
 
     for ei in range(input_length):
         encoder_ouput, encoder_hidden = encoder(input_tensor[ei], encoder_hidden)
-        encoder_ouput[ei] = encoder_ouput[0,0]
+        encoder_outputs[ei] = encoder_ouput[0,0]
 
     decoder_input = torch.tensor([[SOS_Token]], device=device)
 
@@ -177,7 +177,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
         input_tensor = training_pair[0]
         target_tensor = training_pair[1]
 
-        loss = train(input_tensor, target_tensor, encoder, device, encoder_optimizer, decoder_optimizer, criterion)
+        loss = train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
         print_loss_total += loss
         plot_loss_total += loss
 
@@ -202,6 +202,49 @@ def showPlot(points):
     plt.plot(points)
     plt.show()
 
+def evaluate(encoder, decoder, sentence, max_length = 10):
+    with torch.no_grad():
+        input_tensor = tensorFromSentence(input_lang, sentence)
+        input_lenght = input_tensor.size()[0]
+        encoder_hidden = encoder.initHidden()
+
+        encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
+
+        for ei in range(input_lenght):
+            encoder_output, encoder_hidden = encoder(input_tensor[ei], encoder_hidden)
+            encoder_outputs[ei] += encoder_output[0,0]
+
+        decoder_input = torch.tensor([[SOS_Token]], device=device)
+
+        decoder_hidden = encoder_hidden
+
+        decoded_words = []
+        decoder_attns = torch.zeros(max_length, max_length)
+
+        for di in range(max_length):
+            decoder_output, decoder_hidden, decoder_attn = decoder(decoder_input, decoder_hidden, encoder_outputs)
+            decoder_attns[di] = decoder_attn.data
+            topv, topi = decoder_output.data.topk(1)
+            if topi.item() == EOS_Token:
+                decoded_words.append('<EOS>')
+                break
+            else:
+                decoded_words.append(output_lang.index2word[topi.item()])
+            
+            decoder_input = topi.squeeze.detach()
+
+        return decoded_words, decoder_attns[:di + 1]
+
+def evaluateRandomly(encoder, decoder, n=10):
+    for i in range(n):
+        pair = random.choice(pairs)
+        print('>', pair[0])
+        print('=', pair[1])
+        output_words, attentions = evaluate(encoder,decoder, pair[0])
+        output_sentence = ' '.join(output_words)
+        print('<', output_sentence)
+        print('')
+
 if __name__ == "__main__":
     SOS_Token = 0
     EOS_Token = 0
@@ -218,4 +261,10 @@ if __name__ == "__main__":
     teacher_forcing_ratio = .5
 
     input_lang, output_lang, pairs = prepareData('eng', 'fra', True)
-    print(random.choice(pairs))
+    # print(random.choice(pairs))
+
+    hidden_size = 256
+    encoder1 = EncoderRNN(input_lang.n_words, hidden_size).to(device)
+    attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words).to(device)
+    trainIters(encoder1, attn_decoder1, 75000, print_every=5000)
+    evaluateRandomly(encoder1, attn_decoder1)
