@@ -231,7 +231,7 @@ def evaluate(encoder, decoder, sentence, max_length = 10):
             else:
                 decoded_words.append(output_lang.index2word[topi.item()])
             
-            decoder_input = topi.squeeze.detach()
+            decoder_input = topi.squeeze().detach()
 
         return decoded_words, decoder_attns[:di + 1]
 
