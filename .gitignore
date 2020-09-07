@@ -1,4 +1,5 @@
 /data
+/.data
 /runs
 60_Min_Blitz/*.pth
 /__pycache__
