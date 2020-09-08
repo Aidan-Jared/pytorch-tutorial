@@ -5,6 +5,9 @@ import torchtext
 from torchtext.datasets import Multi30k
 from torchtext.data import Field, BucketIterator
 from torchtextModel import Encoder, Decoder, Attention, Seq2Seq
+
+import math
+import time
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def init_weights(m):
@@ -16,6 +19,53 @@ def init_weights(m):
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+def train(model, iterator, optimizer, criterion, clip):
+    model.train()
+    epoch_loss = 0
+
+    for _,batch in enumerate(iterator):
+        src = batch.src
+        trg = batch.trg
+        
+        optimizer.zero_grad()
+        output = model(src, trg)
+
+        output = output[1:].view(-1, output.shape[-1])
+        trg = trg[1:].view(-1)
+
+        loss = criterion(output, trg)
+        loss.backward()
+
+        nn.utils.clip_grad_norm_(model.parameters(), clip)
+        optimizer.step()
+
+        epoch_loss += loss.item()
+    return epoch_loss / len(iterator)
+
+def evaluate(model, iterator, criterion):
+    model.eval()
+    epoch_loss = 0
+    with torch.no_grad():
+        for _,batch in enumerate(iterator):
+            src = batch.src
+            trg = batch.trg
+
+            output = model(src, trg, 0)
+            output = output[1:].view(-1, output.shape[-1])
+            trg = trg[1:].view(-1)
+
+            loss = criterion(output, trg)
+
+            epoch_loss += loss.item()
+
+    return epoch_loss / len(iterator)
+
+def epoch_time(start_time, end_time):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
 
 if __name__ == "__main__":
     SRC = Field(
@@ -68,5 +118,24 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters())
     print(f'The model has {count_parameters(model):,} trainable parameters')
 
-    PAD_IDX = TRG.vocab.stoi('<pad>')
+    PAD_IDX = TRG.vocab.stoi['<pad>']
     criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+
+    N_EPOCHS = 10
+    CLIP = 1
+
+    best_valid_loss = float('inf')
+
+    for epoch in range(N_EPOCHS):
+        start_time = time.time()
+        train_loss = train(model, train_iterator, optimizer, criterion, CLIP)
+        valid_loss = evaluate(model, valid_iterator, criterion)
+        end_time = time.time()
+        epoch_mins, epoch_secs = epoch_time(start_time, end_time)
+
+        print(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
+        print(f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
+        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. PPL: {math.exp(valid_loss):7.3f}')
+
+    test_loss = evaluate(model, test_iterator, criterion)
+    print(f'| Test Loss: {test_loss:.3f} | Test PPL: {math.exp(test_loss):7.3f} |')
