@@ -107,4 +107,4 @@ class Seq2Seq(nn.Module):
 
             top1 = output.max(1)[1]
             output = (trg[t] if teacher_force else top1)
-        return output
+        return outputs
