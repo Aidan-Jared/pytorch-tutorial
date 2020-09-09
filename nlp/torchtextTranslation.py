@@ -70,7 +70,7 @@ def epoch_time(start_time, end_time):
 if __name__ == "__main__":
     SRC = Field(
                 tokenize= 'spacy',
-                tokenizer_language= 'de',
+                tokenizer_language= 'de_core_news_sm',
                 init_token= '<sos>',
                 eos_token= '<eos>',
                 lower= True
@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     TRG = Field(
                 tokenize= 'spacy',
-                tokenizer_language= 'en',
+                tokenizer_language= 'en_core_web_sm',
                 init_token= '<sos>',
                 eos_token= '<eos>',
                 lower= True
