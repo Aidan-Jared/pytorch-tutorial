@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from torch.autograd import Variable
 import math
 import copy
@@ -188,14 +189,35 @@ class Decoder(nn.Module):
         return x
 
 class Transformer(nn.Module):
-    def __init__(self, src_vocab, trg_vocab, d_model, N, heads):
+    def __init__(self, src_vocab, trg_vocab, d_model, N, heads, input_pad, target_pad):
         super().__init__()
         self.encoder = Encoder(src_vocab, d_model, N, heads)
         self.decoder = Decoder(trg_vocab, d_model, N, heads)
         self.out = nn.Linear(d_model, trg_vocab)
+        self.input_pad = input_pad
+        self.target_pad = target_pad
     
-    def forward(self, src, trg, src_mask, trg_mask):
+    def forward(self, src, trg):
+        src_mask = self._src_mask(src)
+        trg_mask = self._trg_mask(trg)
         e_ouputs = self.encoder(src, src_mask)
         d_output = self.decoder(trg, e_ouputs, src_mask, trg_mask)
         output = self.out(d_output)
         return output
+
+    def _src_mask(self, batch):
+        input_seq = batch.transpose(0,1)
+
+        input_mask = (input_seq != self.input_pad).unsqueeze(1)
+        return input_mask
+
+    def _trg_mask(self, batch):
+        target_seq = batch.transpose(0,1)
+        target_mask = (target_seq != self.target_pad).unsqueeze(1)
+
+        size = target_seq.size(1)
+        nopeak_mask = np.triu(np.ones(1, size, size), k=1).astype('uint8')
+        nopeak_mask = Variable(torch.from_numpy(nopeak_mask) == 0)
+
+        target_mask = target_mask & nopeak_mask
+        return target_mask

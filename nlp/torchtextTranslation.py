@@ -5,6 +5,7 @@ import torchtext
 from torchtext.datasets import Multi30k
 from torchtext.data import Field, BucketIterator
 from torchtextModel import Encoder, Decoder, Attention, Seq2Seq
+from Transformer import Transformer
 
 import math
 import time
@@ -100,26 +101,36 @@ if __name__ == "__main__":
 
     INPUT_DIM = len(SRC.vocab)
     OUTPUT_DIM = len(TRG.vocab)
-    ENC_EMB_DIM = 32
-    DEC_EMB_DIM = 32
-    ENC_HID_DIM = 64
-    DEC_HID_DIM = 64
-    ATTN_DIM = 8
-    ENC_DROPOUT = 0.5
-    DEC_DROPOUT = 0.5
+    # ENC_EMB_DIM = 32
+    # DEC_EMB_DIM = 32
+    # ENC_HID_DIM = 64
+    # DEC_HID_DIM = 64
+    # ATTN_DIM = 8
+    # ENC_DROPOUT = 0.5
+    # DEC_DROPOUT = 0.5
 
-    enc = Encoder(INPUT_DIM, ENC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, ENC_DROPOUT)
-    attn = Attention(ENC_HID_DIM, DEC_HID_DIM, ATTN_DIM)
-    dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, DEC_DROPOUT, attn)
+    # enc = Encoder(INPUT_DIM, ENC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, ENC_DROPOUT)
+    # attn = Attention(ENC_HID_DIM, DEC_HID_DIM, ATTN_DIM)
+    # dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, DEC_DROPOUT, attn)
 
-    model = Seq2Seq(enc, dec, device).to(device)
-    model.apply(init_weights)
+    # model = Seq2Seq(enc, dec, device).to(device)
+    # model.apply(init_weights)
+    d_model = 512
+    heads = 8
+    N = 1
+    SRC_PAD_IDX = SRC.vocab.stoi['<pad>']
+    TRG_PAD_IDX = TRG.vocab.stoi['<pad>']
 
-    optimizer = optim.Adam(model.parameters())
+    model = Transformer(INPUT_DIM, OUTPUT_DIM, d_model, N, heads, SRC_PAD_IDX, TRG_PAD_IDX)
+
+    for p in model.parameters():
+        if p.dim() > 1:
+            nn.init.xavier_uniform_(p)
+
+    optimizer = optim.Adam(model.parameters(), lr=.0001, betas=(.9,.98), eps=1e-9)
     print(f'The model has {count_parameters(model):,} trainable parameters')
 
-    PAD_IDX = TRG.vocab.stoi['<pad>']
-    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+    criterion = nn.CrossEntropyLoss(ignore_index=TRG_PAD_IDX)
 
     N_EPOCHS = 10
     CLIP = 1
