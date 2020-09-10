@@ -221,5 +221,5 @@ class Transformer(nn.Module):
         nopeak_mask = Variable(torch.from_numpy(nopeak_mask) == 0)
 
         target_mask = target_mask & nopeak_mask
-        target_mask = F.pad(target_mask, pad=(0, 0,target_seq.size(0)-size,0), value=False)
+        # target_mask = F.pad(target_mask, pad=(0, 0,target_seq.size(0)-size,0), value=False)
         return target_mask

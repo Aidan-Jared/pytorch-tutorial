@@ -26,11 +26,12 @@ def train(model, iterator, optimizer, criterion, clip):
     epoch_loss = 0
 
     for _,batch in enumerate(iterator):
-        src = batch.src
-        trg = batch.trg
+        src = batch.src.transpose(0,1)
+        trg = batch.trg.transpose(0,1)
         
         optimizer.zero_grad()
-        output = model(src, trg)
+        trg_input = trg[:, :-1]
+        output = model(src, trg_input)
 
         output = output[1:].view(-1, output.shape[-1])
         trg = trg[1:].view(-1)
