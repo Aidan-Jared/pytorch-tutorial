@@ -52,7 +52,7 @@ class MultiHeadAttention(nn.Module):
         scores = torch.matmul(q, k.transpose(-2,-1)) / math.sqrt(d_k)
         if mask is not None:
             mask = mask.unsqueeze(1)
-            scores = scores.masked_fill(mask.transpose(0,-1) == 0, -1e9)
+            scores = scores.masked_fill(mask == 0, -1e9)
         scores = F.softmax(scores, dim=1)
         if dropout is not None:
             scores = dropout(scores)
@@ -206,16 +206,13 @@ class Transformer(nn.Module):
         return output
 
     def _src_mask(self, batch):
-        input_seq = batch.transpose(0,1)
-
-        input_mask = (input_seq != self.input_pad).unsqueeze(1)
+        input_mask = (batch != self.input_pad).unsqueeze(-2)
         return input_mask
 
     def _trg_mask(self, batch):
-        target_seq = batch.transpose(0,1)
-        target_mask = (target_seq != self.target_pad).unsqueeze(1)
+        target_mask = (batch != self.target_pad).unsqueeze(-2)
 
-        size = target_seq.size(1)
+        size = batch.size(1)
         m = np.ones((1, size, size))
         nopeak_mask = np.triu(m,k=1).astype('uint8')
         nopeak_mask = Variable(torch.from_numpy(nopeak_mask) == 0)

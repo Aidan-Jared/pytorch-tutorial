@@ -33,8 +33,8 @@ def train(model, iterator, optimizer, criterion, clip):
         trg_input = trg[:, :-1]
         output = model(src, trg_input)
 
-        output = output[1:].view(-1, output.shape[-1])
-        trg = trg[1:].view(-1)
+        output = output.view(-1, output.shape[-1])
+        trg = trg[:, 1:].contiguous().view(-1)
 
         loss = criterion(output, trg)
         loss.backward()
@@ -50,12 +50,14 @@ def evaluate(model, iterator, criterion):
     epoch_loss = 0
     with torch.no_grad():
         for _,batch in enumerate(iterator):
-            src = batch.src
-            trg = batch.trg
+            src = batch.src.transpose(0,1)
+            trg = batch.trg.transpose(0,1)
 
-            output = model(src, trg, 0)
-            output = output[1:].view(-1, output.shape[-1])
-            trg = trg[1:].view(-1)
+            trg_input = trg[:, :-1]
+
+            output = model(src, trg_input)
+            output = output.view(-1, output.shape[-1])
+            trg = trg[:, 1:].contiguous().view(-1)
 
             loss = criterion(output, trg)
 
