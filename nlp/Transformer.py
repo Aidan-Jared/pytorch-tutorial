@@ -52,7 +52,7 @@ class MultiHeadAttention(nn.Module):
         scores = torch.matmul(q, k.transpose(-2,-1)) / math.sqrt(d_k)
         if mask is not None:
             mask = mask.unsqueeze(1)
-            scores = scores.masked_fill(mask == 0, -1e9)
+            scores = scores.masked_fill(mask.transpose(0,-1) == 0, -1e9)
         scores = F.softmax(scores, dim=1)
         if dropout is not None:
             scores = dropout(scores)
@@ -63,8 +63,8 @@ class MultiHeadAttention(nn.Module):
         bs = q.size(0)
 
         k = self.k_linear(k).view(bs, -1, self.h, self.d_k)
-        q = self.q_linear(k).view(bs, -1, self.h, self.d_k)
-        v = self.v_linear(k).view(bs, -1, self.h, self.d_k)
+        q = self.q_linear(q).view(bs, -1, self.h, self.d_k)
+        v = self.v_linear(v).view(bs, -1, self.h, self.d_k)
 
         # transpose to get dimensions batch size * h * seq len * d_model
         k = k.transpose(1,2)
@@ -216,8 +216,10 @@ class Transformer(nn.Module):
         target_mask = (target_seq != self.target_pad).unsqueeze(1)
 
         size = target_seq.size(1)
-        nopeak_mask = np.triu(np.ones(1, size, size), k=1).astype('uint8')
+        m = np.ones((1, size, size))
+        nopeak_mask = np.triu(m,k=1).astype('uint8')
         nopeak_mask = Variable(torch.from_numpy(nopeak_mask) == 0)
 
         target_mask = target_mask & nopeak_mask
+        target_mask = F.pad(target_mask, pad=(0, 0,target_seq.size(0)-size,0), value=False)
         return target_mask

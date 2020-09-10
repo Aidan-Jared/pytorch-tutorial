@@ -91,7 +91,7 @@ if __name__ == "__main__":
     SRC.build_vocab(train_data, min_freq=2)
     TRG.build_vocab(train_data, min_freq=2)
 
-    BATCH_SIZE = 128
+    BATCH_SIZE = 80
 
     train_iterator, valid_iterator, test_iterator = BucketIterator.splits(
                                                                         (train_data, valid_data, test_data),
