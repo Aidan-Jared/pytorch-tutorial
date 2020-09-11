@@ -1,12 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 import torchtext
 from torchtext.datasets import Multi30k
 from torchtext.data import Field, BucketIterator
 from torchtextModel import Encoder, Decoder, Attention, Seq2Seq
+from torch.autograd import Variable
 from Transformer import Transformer
 
+import numpy as np
 import math
 import time
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -70,6 +73,30 @@ def epoch_time(start_time, end_time):
     elapsed_mins = int(elapsed_time / 60)
     elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
     return elapsed_mins, elapsed_secs
+
+def translate(model, src, trg, custom_sentence, max_len = 80):
+    model.eval()
+    tok_sentence = src.preprocess(custom_sentence)
+    sentence = torch.LongTensor([[src.vocab.stoi[tok] for tok in tok_sentence]])
+    src_mask = model._src_mask(sentence)
+    
+    e_outputs = model.encoder(sentence, src_mask)
+    outputs = torch.zeros(max_len).type_as(src.data)
+    outputs[0] = torch.LongTensor([trg.vocab.stoi['<sos>']])
+
+    for i in range(1,max_len):
+        trg_mask = np.triu(np.ones((1,i,i), k=1).astype('uint8'))
+        trg_mask = Variable(torch.from_numpy(trg_mask) == 0)
+        
+        d_output = model.decoder(outputs[:i].unsqueeze(0), e_outputs, src_mask, trg_mask)
+        d_output = model.out(d_output)
+        out = F.softmax(d_output, dim=-1)
+
+        val, ix = out[:,-1].data.topk(1)
+        outputs[i] = ix[0][0]
+        if ix[0][0] == trg.vocab.stoi['<eos>']:
+            break
+    return ' '.join([trg.vocab.itos[ix] for ix in outputs[:i]])
 
 if __name__ == "__main__":
     SRC = Field(
@@ -140,6 +167,8 @@ if __name__ == "__main__":
 
     best_valid_loss = float('inf')
 
+    
+    
     for epoch in range(N_EPOCHS):
         start_time = time.time()
         train_loss = train(model, train_iterator, optimizer, criterion, CLIP)
