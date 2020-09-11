@@ -81,12 +81,12 @@ def translate(model, src, trg, custom_sentence, max_len = 80):
     src_mask = model._src_mask(sentence)
     
     e_outputs = model.encoder(sentence, src_mask)
-    outputs = torch.zeros(max_len).type_as(src.data)
+    outputs = torch.zeros(max_len).type_as(sentence.data)
     outputs[0] = torch.LongTensor([trg.vocab.stoi['<sos>']])
 
     for i in range(1,max_len):
-        trg_mask = np.triu(np.ones((1,i,i), k=1).astype('uint8'))
-        trg_mask = Variable(torch.from_numpy(trg_mask) == 0)
+        trg_mask = np.triu(np.ones((1,i,i)), k=1).astype('uint8')
+        trg_mask = torch.from_numpy(trg_mask) == 0
         
         d_output = model.decoder(outputs[:i].unsqueeze(0), e_outputs, src_mask, trg_mask)
         d_output = model.out(d_output)
@@ -166,8 +166,6 @@ if __name__ == "__main__":
     CLIP = 1
 
     best_valid_loss = float('inf')
-
-    
     
     for epoch in range(N_EPOCHS):
         start_time = time.time()
@@ -182,3 +180,9 @@ if __name__ == "__main__":
 
     test_loss = evaluate(model, test_iterator, criterion)
     print(f'| Test Loss: {test_loss:.3f} | Test PPL: {math.exp(test_loss):7.3f} |')
+
+    print('input: ich bin ein mann | expected output: i am a man \n')
+    print('model output: ', translate(model, SRC, TRG, "ich bin ein mann"))
+
+    print('input: was ist liebe | expected output: what is love \n')
+    print('model output: ', translate(model, SRC, TRG, "was ist liebe"))
