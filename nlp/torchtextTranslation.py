@@ -118,8 +118,8 @@ if __name__ == "__main__":
     train_data, valid_data, test_data = Multi30k.splits(exts = ('.de', '.en'),
                                                     fields = (SRC, TRG))
     
-    SRC.build_vocab(train_data, min_freq=2)
-    TRG.build_vocab(train_data, min_freq=2)
+    SRC.build_vocab(train_data, min_freq=1)
+    TRG.build_vocab(train_data, min_freq=1)
 
     BATCH_SIZE = 80
 
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     # model.apply(init_weights)
     d_model = 512
     heads = 8
-    N = 1
+    N = 5
     SRC_PAD_IDX = SRC.vocab.stoi['<pad>']
     TRG_PAD_IDX = TRG.vocab.stoi['<pad>']
 

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from torch.autograd import Variable
 import math
 import copy
 
@@ -32,7 +31,7 @@ class PositionalEncoder(nn.Module):
     def forward(self, x):
         x = x * math.sqrt(self.d_model)
         seq_len = x.size(1)
-        x = x + Variable(self.pe[:,:seq_len], requires_grad=False)
+        x = x + self.pe[:,:seq_len].requires_grad_(False)
         return x
 
 class MultiHeadAttention(nn.Module):
@@ -215,7 +214,7 @@ class Transformer(nn.Module):
         size = batch.size(1)
         m = np.ones((1, size, size))
         nopeak_mask = np.triu(m,k=1).astype('uint8')
-        nopeak_mask = Variable(torch.from_numpy(nopeak_mask) == 0)
+        nopeak_mask = torch.from_numpy(nopeak_mask) == 0
 
         target_mask = target_mask & nopeak_mask
         # target_mask = F.pad(target_mask, pad=(0, 0,target_seq.size(0)-size,0), value=False)
